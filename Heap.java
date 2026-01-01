@@ -26,13 +26,14 @@ public class Heap
      *
      */
     public Heap(boolean lazyMelds, boolean lazyDecreaseKeys)
-    {
+    {// constructor time complexity O(1)
         this.lazyMelds = lazyMelds;
         this.lazyDecreaseKeys = lazyDecreaseKeys;
         // student code can be added here
     }
     
     public Heap(boolean lazyMelds, boolean lazyDecreaseKeys, HeapNode x, int HeapSize, int numOfTrees) {
+    	// constructor time complexity O(1)
     	this.numOfTrees=numOfTrees;
     	this.HeapSize=HeapSize;
         this.lazyMelds = lazyMelds;
@@ -50,10 +51,10 @@ public class Heap
      */
     public HeapNode insert(int key, String info) //TODO edge case of inserting first node
     {    // insert using meld, returns pointer to the node after insertion
-    	 // complexity depends on meld complexity
+    	 // complexity depends on meld complexity (which depends on lazy meld value)
     	HeapNode node = new HeapNode(key,info);
 
-    	if(this.min== null) {
+    	if(this.min== null) {  // edge case, tree were empty
     		this.min=node;
     		this.HeapSize=1;this.numOfTrees=1;
     	}
@@ -91,7 +92,7 @@ public class Heap
     	if(this.min ==null) { // special case, trying to delete from empty tree
     		return;
     	}
-    	this.HeapSize--;
+    	this.HeapSize--;this.numOfTrees--;
     	HeapNode prevMin = this.min;
     	if(this.min.next== this.min) { // means minimum has no siblings
     		this.min=null;
@@ -101,10 +102,7 @@ public class Heap
     	else { // means minimum has siblings
     		this.min.next.prev=this.min.prev; // connecting between minimum prev and next
     		this.min.prev.next=this.min.next; // for removal of minimum from the tree
-    		System.out.println("arrived");
-    		System.out.println(prevMin+" "+prevMin.next);
     		this.min= findMinimalInLevel(prevMin.next);
-    		System.out.println("notarrived");
     	}
     	
     	HeapNode newHeapMin=null;
@@ -114,6 +112,7 @@ public class Heap
     		siblingsToFather(newHeapMin,null); // removing connection of min Childrens from min
     	}
     	Heap heap2 = new Heap(this.lazyMelds, this.lazyDecreaseKeys, newHeapMin, 0, prevMin.rank);
+    	heap2.unMarkRoots();
     	this.meld(heap2);
     	prevMin.child=null;prevMin.next=null;prevMin.prev=null;// removing connection of old min from the tree
     	
@@ -160,6 +159,7 @@ public class Heap
     		cascadingCuts(x);
     	}
     	
+    	
     	else {
     		heapifyUp(x);
     		if(this.min.key>x.key) {
@@ -168,6 +168,28 @@ public class Heap
     	}
         return; // should be replaced by student code
     }
+    
+  	public void unMarkRoots() {
+		// function remove marks from roots of new Heap and updates its numOfMark field
+		if(this.min==null) {
+			return;
+		}
+		if(this.min.flag) {
+			this.min.flag=false;
+			this.numOfMarked--;
+		}
+		HeapNode curr = this.min.next;
+		while(curr!= this.min) {
+			if(curr.flag) {
+				curr.flag=false;
+				this.numOfMarked--;
+			}
+			curr = curr.next;
+		}
+		return;
+		
+	}
+  	
     public void heapifyUp(HeapNode x) {
     	while ((x.parent!=null) && (x.key<x.parent.key)){//not a root and need to go up
     		singleHeapify(x);
@@ -267,6 +289,7 @@ public class Heap
 		
 		x.next=x;x.prev=x;
 		Heap H = new Heap(this.lazyMelds,this.lazyDecreaseKeys,x, 0,1);
+		H.unMarkRoots();// removing mark from H roots
 		this.meld(H);
     }
     /**
@@ -385,13 +408,12 @@ public class Heap
     	HeapNode min = this.min;
     	HeapNode curr = min.next;
     	rankArr[this.min.rank]=min;
-    	System.out.println("consolidate arrLen "+ rankArr.length+ " tree size "+ this.HeapSize);
     	while(curr != min) { // running over every treeRoot
 			HeapNode next = curr.next;
 			
     		while(rankArr[curr.rank] !=null) {   // linking until open spot in the array
     			int prevRank = curr.rank;
-    	
+    			
     			curr = curr.link(rankArr[curr.rank]);
     			rankArr[prevRank]=null;
     			this.numOfLinks++;this.numOfTrees--;
