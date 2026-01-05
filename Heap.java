@@ -49,7 +49,7 @@ public class Heap
      * Insert (key,info) into the heap and return the newly generated HeapNode.
      *
      */
-    public HeapNode insert(int key, String info) //TODO edge case of inserting first node
+    public HeapNode insert(int key, String info) 
     {    // insert using meld, returns pointer to the node after insertion
     	 // complexity depends on meld complexity (which depends on lazy meld value)
     	HeapNode node = new HeapNode(key,info);
@@ -88,7 +88,12 @@ public class Heap
      *
      */
     public void deleteMin()
-    {
+    {	
+    	//function deletesMinimal Node from the Heap
+    	//complexity Analysis, all Helper function (unMarkRoots, SiblingsToFather, findMinimalInLevel)
+    	// goes over roots and minNode Childs, which happens in any case through meld/consolidate
+    	// therefore time complexity if LazyMeld O(logn) amrotize and O(n) Worst Case
+    	// else (lazyMelds = false) time complexity is o(logn)
     	if(this.min ==null) { // special case, trying to delete from empty tree
     		return;
     	}
@@ -120,14 +125,14 @@ public class Heap
     		this.consolidate();
     	}
     	
-        return; // should be replaced by student code
+        return; 
     }
 
     
     public HeapNode findMinimalInLevel(HeapNode x) {
     	//helper function to find minimal Node between siblings
     	//used to update new MinimalNodes for deleteMin
-    	//time complexity O(numOfSiblings)
+    	//time complexity O(numOfSiblings)-o(n) if called on the initiail roots otherwise o(logn)
     	HeapNode min = x;
     	HeapNode current = x.next;
     	while(current!=x) {
@@ -146,7 +151,13 @@ public class Heap
      * 
      */
     public void decreaseKey(HeapNode x, int diff) 
-    {    
+    {   // function decrease key of x by diff
+    	// time complexity analsys
+    	//if LazyDecreasekey= false time complexity O(log^2(n)) by calling heapifyUp
+    	//if LazyDecreaseKey = true time complexity decided by Lazymeld
+    	// if Lazy Meld= True then O(1) amrotize (and O(n) Worst Case)
+    	//if LazyMeld = false then O(logn) amortize (and O(nlogn) Worst Case)
+    	
     	x.setKey(x.key-diff);
     	if((x.parent == null) ||(x.key>=x.parent.key)) { // x already a root, no heapify or cascade is necessary
     		if(this.min.key>x.key) {
@@ -191,15 +202,23 @@ public class Heap
 	}
   	
     public void heapifyUp(HeapNode x) {
+    	//Helper function for DecreaseKey, LazyDecrease = false
+    	// function preforms routine of HeapifyUp calls
+    	// time complexity O(Log^2(n)) logn loop calls for single Heapify
     	while ((x.parent!=null) && (x.key<x.parent.key)){//not a root and need to go up
-    		singleHeapify(x);
+    		singleHeapify(x); // loop runs O(logn), every tree depth is blocked
     	
     	}
     	return;
     }
     public void singleHeapify(HeapNode x) {
+    	// Helper function for Heapify, LazyDecrease = false
     	// performs single heapify up
-    	// o(siblings) running time , o(1) memory complex
+    	//o(1) memory complex
+    	//time complexity Based on helper functions, therefore 
+    	//time complexity is O(logn)
+    	
+    	
     	// first keeping pointers
     	// updating heapify up attribute
     	this.numOfHeapify++;
@@ -227,7 +246,9 @@ public class Heap
     	parent.parent=x;
     }
     public void connectingNewSibling(HeapNode oldSibling,HeapNode newSibling,HeapNode next ,HeapNode prev) {
+    	//Helper function for Heapify, LazyDecrease = false
     	// connecting new siblings in place of old sibling
+    	//time complexity O(1) only pointers adjustments
     	if (next==oldSibling) { // edge case: old is an only child 
     		newSibling.next=newSibling;
     		newSibling.prev=newSibling;
@@ -244,7 +265,9 @@ public class Heap
     	
     }
     public void siblingsToFather(HeapNode c, HeapNode  parent) {
+    	//Helper function for Heapify, LazyDecrease = false
     	// the function recieve a node and connect all his brothers (excluding him) to his father
+    	// time complexity O(rank(c.parent) = O(logn)
     	HeapNode curr=c.next;
     	while( curr!=c) {
     		curr.parent=parent;
@@ -252,6 +275,10 @@ public class Heap
     	}
     }
     public void cascadingCuts(HeapNode x) { // we can assume x isnt a root
+    	// Helper fcuntion for Decrease key, LazyDecrease = true
+    	// while loop runs O(n) Worst Case but O(1) in amoritze.
+    	//therefore time complexity if lazy meld O(1) amortize, O(n) Worst Case
+    	// else time complexity is O(logn) amrotize O(nLogn) Worst Case
     	while((x.parent.flag) && (x.parent.parent!=null)) {
     		this.numOfMarked--; // case our parent isnt root 
     		x.parent.flag=false;// unmark him, cut then move upwards
@@ -272,6 +299,9 @@ public class Heap
     }
     
     public void singleCut(HeapNode x) {
+    	// Helper fcuntion for cascadingCuts, LazyDecrease = true
+    	//time complexity by meld complexity
+    	// if lazyMeld time complexity O(1), else time complexity O(logn)
     	x.parent.rank--;
     	this.numOfCuts++;
 		if(x.parent.child==x) { // connecting its parent to other child
@@ -400,9 +430,13 @@ public class Heap
     
     public void consolidate() {
     	// helper function unites all same degree trees
-    	// adjust heads so does every tree has unique deg 
+    	// adjust heads so does every tree has unique deg
     	// time complexity O(numTrees), outer while runs numTree iterations
     	// inner while iteration by number of links (blocked by O(numTree) either).
+    	// numOfTrees if lazyMelds is O(logn) amortize and O(n) WorstCase
+    	// else numOfTrees is O(logn)
+    	
+    	
     	double len = (Math.log(HeapSize)/Math.log(1.5))+1;
     	HeapNode [] rankArr = new HeapNode[(int) len]; // initialize array length, blocked by log 
     	HeapNode min = this.min;
@@ -618,7 +652,8 @@ public class Heap
         }
         
         public HeapNode link(HeapNode other) {
-
+        	// function linking between this and other HeapNodes as of Heap Linking Algorithm
+        	// time complexity O(1), only pointers adjusments
         	if(this.key<other.key) {
         		other.parent=this;
         		
