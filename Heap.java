@@ -12,7 +12,7 @@ public class Heap
 {
     public final boolean lazyMelds;
     public final boolean lazyDecreaseKeys;
-    public HeapNode min; // used as LinkedList of roots.
+    public HeapItem min; // used as LinkedList of roots.
     public int HeapSize=0;
     public int numOfTrees=0;
     public int numOfLinks=0;
@@ -38,8 +38,12 @@ public class Heap
     	this.HeapSize=HeapSize;
         this.lazyMelds = lazyMelds;
         this.lazyDecreaseKeys = lazyDecreaseKeys;
-        this.min=x;
-    	
+        if(x==null) {
+        	this.min=null;
+        }
+        else {
+        this.min=x.item;
+        }
     }
 
     /**
@@ -49,23 +53,23 @@ public class Heap
      * Insert (key,info) into the heap and return the newly generated HeapNode.
      *
      */
-    public HeapNode insert(int key, String info) 
+    public HeapItem insert(int key, String info) 
     {    // insert using meld, returns pointer to the node after insertion
     	 // complexity depends on meld complexity (which depends on lazy meld value)
     	HeapNode node = new HeapNode(key,info);
 
     	if(this.min== null) {  // edge case, tree were empty
-    		this.min=node;
+    		this.min=node.item;
     		this.HeapSize=1;this.numOfTrees=1;
     	}
     	else {
     	Heap H = new Heap(this.lazyMelds,this.lazyDecreaseKeys);
-    	H.setMin(node);
+    	H.setMin(node.item);
     	H.numOfTrees=1;H.HeapSize=1;
     	this.meld(H);
 
     	}
-    	return node;
+    	return node.item;
     }
     
     
@@ -77,7 +81,7 @@ public class Heap
      * Return the minimal HeapNode, null if empty.
      *
      */
-    public HeapNode findMin()
+    public HeapItem findMin()
     {
         return this.min; // should be replaced by student code
     }
@@ -94,35 +98,42 @@ public class Heap
     	// goes over roots and minNode Childs, which happens in any case through meld/consolidate
     	// therefore time complexity if LazyMeld O(logn) amrotize and O(n) Worst Case
     	// else (lazyMelds = false) time complexity is o(logn)
+
+    	
     	if(this.min ==null) { // special case, trying to delete from empty tree
     		return;
     	}
+
     	this.HeapSize--;this.numOfTrees--;
-    	HeapNode prevMin = this.min;
-    	if(this.min.next== this.min) { // means minimum has no siblings
+    	HeapNode prevMin = this.min.node;
+    	if(this.min.node.next== this.min.node) { // means minimum has no siblings
     		this.min=null;
 
     	}
     	
     	else { // means minimum has siblings
-    		this.min.next.prev=this.min.prev; // connecting between minimum prev and next
-    		this.min.prev.next=this.min.next; // for removal of minimum from the tree
-    		this.min= findMinimalInLevel(prevMin.next);
+    		this.min.node.next.prev=this.min.node.prev; // connecting between minimum prev and next
+    		this.min.node.prev.next=this.min.node.next; // for removal of minimum from the tree
+    		this.min= findMinimalInLevel(prevMin.next).item;
+
     	}
     	
-    	HeapNode newHeapMin=null;
+    	HeapNode newHeapMin=null; /// TODO
     	if(prevMin.child!= null) { 
     		newHeapMin = findMinimalInLevel(prevMin.child);// updating minimal Node for the Tree formed by min childrens
-    		newHeapMin.parent=null;
+    		newHeapMin.parent=null;// updating field here cause siblings to father dont updates him
     		siblingsToFather(newHeapMin,null); // removing connection of min Childrens from min
     	}
     	Heap heap2 = new Heap(this.lazyMelds, this.lazyDecreaseKeys, newHeapMin, 0, prevMin.rank);
     	heap2.unMarkRoots();
+
     	this.meld(heap2);
     	prevMin.child=null;prevMin.next=null;prevMin.prev=null;// removing connection of old min from the tree
     	
     	if(this.lazyMelds) {//making sure that consolidate is called in delete min
+    		if((this.min!= null)) {
     		this.consolidate();
+    		}
     	}
     	
         return; 
@@ -136,7 +147,7 @@ public class Heap
     	HeapNode min = x;
     	HeapNode current = x.next;
     	while(current!=x) {
-    		if(current.key<min.key) {
+    		if(current.item.key<min.item.key) {
     			min=current;
     		}
     		current=current.next;
@@ -145,21 +156,21 @@ public class Heap
     }
     /**
      * 
-     * pre: 0<=diff<=x.key
+     * pre: 0<=diff<=x.item.key
      * 
      * Decrease the key of x by diff and fix the heap.
      * 
      */
-    public void decreaseKey(HeapNode x, int diff) 
+    public void decreaseKey(HeapItem x, int diff) 
     {   // function decrease key of x by diff
-    	// time complexity analsys
-    	//if LazyDecreasekey= false time complexity O(log^2(n)) by calling heapifyUp
+    	// time complexity analysis
+    	//if LazyDecreasekey= false time complexity O(log(n)) by calling heapifyUp
     	//if LazyDecreaseKey = true time complexity decided by Lazymeld
     	// if Lazy Meld= True then O(1) amrotize (and O(n) Worst Case)
     	//if LazyMeld = false then O(logn) amortize (and O(nlogn) Worst Case)
     	
     	x.setKey(x.key-diff);
-    	if((x.parent == null) ||(x.key>=x.parent.key)) { // x already a root, no heapify or cascade is necessary
+    	if((x.node.parent == null) ||(x.key>=x.node.parent.item.key)) { // x already a root, no heapify or cascade is necessary
     		if(this.min.key>x.key) {
     			this.min=x;
     		}
@@ -167,16 +178,18 @@ public class Heap
     	}
     	
     	if(this.lazyDecreaseKeys) {
-    		cascadingCuts(x);
+    		cascadingCuts(x.node);
+    		
     	}
     	
     	
     	else {
-    		heapifyUp(x);
-    		if(this.min.key>x.key) {
-    			this.min=x;
-    		}
+    		heapifyUp(x.node);
+
     	}
+		if(this.min.key>x.key) {
+			this.min=x;
+		}
         return; // should be replaced by student code
     }
     
@@ -185,12 +198,12 @@ public class Heap
 		if(this.min==null) {
 			return;
 		}
-		if(this.min.flag) {
-			this.min.flag=false;
+		if(this.min.node.flag) {
+			this.min.node.flag=false;
 			this.numOfMarked--;
 		}
-		HeapNode curr = this.min.next;
-		while(curr!= this.min) {
+		HeapNode curr = this.min.node.next;
+		while(curr!= this.min.node) {
 			if(curr.flag) {
 				curr.flag=false;
 				this.numOfMarked--;
@@ -204,14 +217,36 @@ public class Heap
     public void heapifyUp(HeapNode x) {
     	//Helper function for DecreaseKey, LazyDecrease = false
     	// function preforms routine of HeapifyUp calls
-    	// time complexity O(Log^2(n)) logn loop calls for single Heapify
-    	while ((x.parent!=null) && (x.key<x.parent.key)){//not a root and need to go up
+    	// time complexity O(Log(n)) logn loop calls for single Heapify
+    	while ((x.parent!=null) && (x.item.key<x.parent.item.key)){//not a root and need to go up
     		singleHeapify(x); // loop runs O(logn), every tree depth is blocked
-    	
+    		x=x.parent;
     	}
     	return;
     }
+    
+    
     public void singleHeapify(HeapNode x) {
+       	// Helper function for Heapify, LazyDecrease = false
+    	// performs single heapify up
+    	//o(1) memory complex
+    	//time complexity Based on helper functions, therefore 
+    	//time complexity is O(1)
+    	
+    	// first keeping pointers
+    	// updating heapify up attribute
+    	this.numOfHeapify++;
+    	HeapItem parentItem=x.parent.item;
+    	x.parent.item=x.item;           /// connecting x item
+    	x.parent.item.node = x.parent;  ///  in parent
+    	x.item=parentItem; /// connecting parent item
+    	x.item.node = x;   /// in x
+    	
+    	
+    	
+    	
+    }
+    public void PreviousSingleHeapify(HeapNode x) {
     	// Helper function for Heapify, LazyDecrease = false
     	// performs single heapify up
     	//o(1) memory complex
@@ -327,7 +362,7 @@ public class Heap
      * Delete the x from the heap.
      *
      */
-    public void delete(HeapNode x) 
+    public void delete(HeapItem x) 
     {    
     	this.decreaseKey(x, x.key+1);//making x the min in the heap 
     	this.deleteMin();
@@ -352,6 +387,8 @@ public class Heap
     	this.numOfMarked += heap2.numMarkedNodes();
     	this.numOfTrees+= heap2.numTrees();
     	
+   
+    	
     	if(this.min==null) { /// edge case this is an empty heap
     		this.min=heap2.min;
     		return;
@@ -360,20 +397,22 @@ public class Heap
     		return;
     	}
     	
-    	HeapNode heap2Head = heap2.min;
+    	HeapNode heap2Head = heap2.min.node;
     	HeapNode heap2Tail=heap2Head.prev;
+
     	
+    	heap2Head.prev = this.min.node;    /// adapting heap 2 head and tail pointers
+    	heap2Tail.next = this.min.node.next; /// to this linkedList
     	
-    	heap2Head.prev = this.min;    /// adapting heap 2 head and tail pointers
-    	heap2Tail.next = this.min.next; /// to this linkedList
+    	this.min.node.next.prev = heap2Tail;  // adding heap 2 root linkedList
+    	this.min.node.next = heap2Head;       // into this root linkedList
     	
-    	this.min.next.prev = heap2Tail;  // adding heap 2 root linkedList
-    	this.min.next = heap2Head;       // into this root linkedList
     	
     	if(heap2.min.key<this.min.key) {
     		this.min=heap2.min;
     	}
     	
+
 
     	if(!this.lazyMelds) {   // consolidate depends on lazy melds
     		this.consolidate();
@@ -437,18 +476,23 @@ public class Heap
     	// else numOfTrees is O(logn)
     	
     	
-    	double len = (Math.log(HeapSize)/Math.log(1.5))+1;
-    	HeapNode [] rankArr = new HeapNode[(int) len]; // initialize array length, blocked by log 
-    	HeapNode min = this.min;
+    	//double len = (Math.log(HeapSize)/Math.log(1.5))+1;
+    	//HeapNode [] rankArr = new HeapNode[(int) len]; // initialize array length, blocked by log 
+    	HeapNode[] rankArr = new HeapNode[100];
+    	HeapNode min = this.min.node;
     	HeapNode curr = min.next;
-    	rankArr[this.min.rank]=min;
+    	rankArr[this.min.node.rank]=min;
     	while(curr != min) { // running over every treeRoot
 			HeapNode next = curr.next;
 			
     		while(rankArr[curr.rank] !=null) {   // linking until open spot in the array
     			int prevRank = curr.rank;
-    			
+    			if(curr==this.min.node) { // edge case, avoiding linking min as this with equal value
+    				curr = rankArr[curr.rank].link(curr);
+    			}
+    			else {
     			curr = curr.link(rankArr[curr.rank]);
+    			}
     			rankArr[prevRank]=null;
     			this.numOfLinks++;this.numOfTrees--;
     					
@@ -484,157 +528,201 @@ public class Heap
 	/**
 	 * @param min the min to set
 	 */
-	public void setMin(HeapNode min) {
+	public void setMin(HeapItem min) {
 		this.min = min;
 	}
-	
 	@Override
     public String toString() {
         if (this.min == null) {
             return "Heap is empty";
         }
+        if (this.min.node == null) {
+            return "Heap corrupted: min.node is null";
+        }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("Heap Structure:\n");
+        sb.append("Heap Structure (min: ").append(min.key).append("):\n");
         
-        // We start from min, but since it's circular, we iterate until we hit min again
-        HeapNode currentRoot = this.min;
+        HeapNode startRoot = this.min.node;
+        HeapNode currentRoot = startRoot;
+        int safety = 0;
+        
         do {
             printSubTree(currentRoot, sb, "", true);
-            sb.append("\n"); // Separate different trees in the root list
+            sb.append("\n"); 
             currentRoot = currentRoot.next;
-        } while (currentRoot != this.min);
+            safety++;
+        } while (currentRoot != startRoot && currentRoot != null && safety < this.HeapSize + 10);
 
         return sb.toString();
     }
 
-    /**
-     * Recursive helper to print the tree structure
-     * @param node The node to print
-     * @param sb The StringBuilder to append to
-     * @param indent The current indentation string
-     * @param isRoot Whether this node is a root of the heap (level 0)
-     */
     private void printSubTree(HeapNode node, StringBuilder sb, String indent, boolean isRoot) {
         sb.append(indent);
-        
         if (!isRoot) {
-            sb.append("|__"); // Visual connection for children
+            sb.append("|__");
         }
         
-        // Print the current node using the existing HeapNode toString
-        sb.append(node.toString());
-        // Optional: Add rank or other debug info
-        // sb.append(" (Rank:").append(node.rank).append(")"); 
+        // NOW USES HeapNode.toString()
+        sb.append(node.toString()); 
         sb.append("\n");
 
-        // If the node has children, we need to iterate over the children's circular list
         if (node.child != null) {
-            HeapNode currentChild = node.child;
-            
-            // Calculate new indent: Roots get simple spacing, children get pipe alignment
+            HeapNode child = node.child;
+            HeapNode startChild = child;
             String newIndent = indent + (isRoot ? "   " : "   |"); 
-            
             do {
-                printSubTree(currentChild, sb, newIndent, false);
-                currentChild = currentChild.next;
-            } while (currentChild != node.child);
+                printSubTree(child, sb, newIndent, false);
+                child = child.next;
+            } while (child != startChild && child != null);
         }
     }
     
     /**
      * Triggers a comprehensive structural integrity check of the Heap.
-     * Throws a RuntimeException immediately if any pointer is broken.
+     * Throws a RuntimeException immediately if any pointer or logic is broken.
+     */
+    /**
+     * Triggers a comprehensive structural integrity check of the Heap.
+     * Throws a RuntimeException immediately if any pointer or logic is broken.
+     */
+    /**
+     * Triggers a comprehensive structural integrity check of the Heap.
+     * SILENT SUCCESS: Only prints or throws if an error is found.
      */
     public void validate() {
         // 1. Empty Heap Check
         if (min == null) {
+            if (HeapSize != 0) throw new RuntimeException("ERROR: min is null but HeapSize is " + HeapSize);
             return; 
         }
 
-        // 2. Start Recursive Validation from the Root List
-        validateNodeList(min, null);
+        if (min.node == null) {
+            throw new RuntimeException("CRITICAL: min.node is null");
+        }
+
+        // 2. Validate Structure & Count Size
+        int calculatedSize = validateNodeAndChildren(min.node, null);
+
+        // 3. Global Heap Properties
+        if (calculatedSize != this.HeapSize) {
+            throw new RuntimeException("SIZE ERROR: HeapSize field = " + HeapSize + ", but actual count = " + calculatedSize);
+        }
         
-        System.out.println("✅ Heap Validation Passed: Pointers and Ranks are correct.");
+        // 4. Validate Min Pointer Accuracy and Root Properties
+        HeapNode startRoot = min.node;
+        HeapNode curr = startRoot;
+        int observedMinKey = Integer.MAX_VALUE;
+        
+        java.util.HashSet<HeapNode> visitedRoots = new java.util.HashSet<>();
+
+        do {
+            if (visitedRoots.contains(curr)) {
+                throw new RuntimeException("INFINITE LOOP detected in Root List");
+            }
+            visitedRoots.add(curr);
+
+             if (curr.item.key < observedMinKey) {
+                observedMinKey = curr.item.key;
+            }
+             
+            if (curr.parent != null) {
+                throw new RuntimeException("ROOT ERROR: Root node [" + curr.item.key + "] has a parent.");
+            }
+            
+            curr = curr.next;
+        } while (curr != startRoot);
+
+        if (this.min.key != observedMinKey) {
+            throw new RuntimeException("MIN POINTER ERROR: min.key = " + this.min.key + ", but actual min key in roots = " + observedMinKey);
+        }
+        
+        // Success! (No print)
     }
 
     /**
-     * Recursive helper that validates a specific list of siblings.
-     * @param startNode      The first node in the circular linked list
-     * @param expectedParent The node that SHOULD be the parent of everyone in this list
+     * Recursive helper that validates a node and its entire subtree.
+     * @return The total number of nodes in this subtree (siblings + their children)
      */
-    private void validateNodeList(HeapNode startNode, HeapNode expectedParent) {
-        if (startNode == null) return;
+    private int validateNodeAndChildren(HeapNode node, HeapNode expectedParent) {
+        if (node == null) return 0;
 
-        HeapNode current = startNode;
-        int safetyCounter = 0;
+        int sizeCount = 0;
+        HeapNode currentSibling = node;
+        HeapNode startSibling = node;
 
-        // Iterate over the circular linked list (The "Brothers")
+        // Iterate over the circular sibling list
         do {
-            // --- CHECK 1: Sibling Integrity ---
-            if (current.next == null || current.prev == null) {
-                 throw new RuntimeException("CRITICAL: Node [" + current.key + "] has null next/prev pointers.");
+            sizeCount++;
+
+            // --- CHECK 1: Item <-> Node Integrity ---
+            if (currentSibling.item == null) {
+                throw new RuntimeException("DATA ERROR: Node exists but has NULL item.");
             }
-            if (current.next.prev != current) {
-                throw new RuntimeException("BROKEN LINK: Node [" + current.key + "] -> next -> prev is [" + current.next.prev.key + "]. Expected [" + current.key + "]");
-            }
-            if (current.prev.next != current) {
-                throw new RuntimeException("BROKEN LINK: Node [" + current.key + "] -> prev -> next is [" + current.prev.next.key + "]. Expected [" + current.key + "]");
+            if (currentSibling.item.node != currentSibling) {
+                 throw new RuntimeException("LINK ERROR: Item [" + currentSibling.item.key + "] points to wrong Node! (item.node != this)");
             }
 
-            // --- CHECK 2: Parent Validation ---
-            if (current.parent != expectedParent) {
-                String expKey = (expectedParent == null) ? "null" : String.valueOf(expectedParent.key);
-                String actKey = (current.parent == null) ? "null" : String.valueOf(current.parent.key);
-                throw new RuntimeException("PARENT ERROR: Node [" + current.key + "] thinks parent is " + actKey + ", but it is actually child of " + expKey);
+            // --- CHECK 2: Pointers (Next/Prev) ---
+            if (currentSibling.next == null || currentSibling.prev == null) {
+                 throw new RuntimeException("POINTER ERROR: Node [" + currentSibling.item.key + "] has null next/prev.");
+            }
+            if (currentSibling.next.prev != currentSibling) {
+                throw new RuntimeException("BROKEN LIST: Node [" + currentSibling.item.key + "] next->prev is wrong.");
             }
 
-            // --- CHECK 3: Parent <-> Child Connection ---
-            if (expectedParent != null && expectedParent.child == null) {
-                throw new RuntimeException("DANGLING PARENT: Parent [" + expectedParent.key + "] has null child pointer, but Node [" + current.key + "] is its child.");
+            // --- CHECK 3: Parent Consistency ---
+            if (currentSibling.parent != expectedParent) {
+                throw new RuntimeException("PARENT ERROR: Node [" + currentSibling.item.key + "] points to wrong parent.");
             }
 
-            // --- CHECK 4: Heap Property ---
-            if (expectedParent != null && current.key < expectedParent.key) {
-                 throw new RuntimeException("HEAP VIOLATION: Child [" + current.key + "] is smaller than Parent [" + expectedParent.key + "]");
+            // --- CHECK 4: Heap Property (Parent <= Child) ---
+            if (expectedParent != null) {
+                if (currentSibling.item.key < expectedParent.item.key) {
+                     throw new RuntimeException("HEAP VIOLATION: Child [" + currentSibling.item.key + "] < Parent [" + expectedParent.item.key + "]");
+                }
             }
 
-            // --- CHECK 5: Rank/Degree Accuracy ---
-            // We count the actual number of children this node has
-            int actualChildCount = 0;
-            if (current.child != null) {
-                HeapNode childRunner = current.child;
+            // --- CHECK 5: Rank Accuracy ---
+            int actualRank = 0;
+            if (currentSibling.child != null) {
+                // Count children manually
+                HeapNode childRunner = currentSibling.child;
                 do {
-                    actualChildCount++;
+                    actualRank++;
                     childRunner = childRunner.next;
-                } while (childRunner != current.child);
+                } while (childRunner != currentSibling.child);
             }
 
-            // Verify against the stored 'rank' field
-            if (current.rank != actualChildCount) {
-                throw new RuntimeException("RANK ERROR: Node [" + current.key + "] claims rank " + current.rank + ", but actually has " + actualChildCount + " children.");
+            if (currentSibling.rank != actualRank) {
+                throw new RuntimeException("RANK ERROR: Node [" + currentSibling.item.key + "] has rank " + currentSibling.rank + " but actually has " + actualRank + " children.");
             }
 
             // --- CHECK 6: Recursion ---
-            if (current.child != null) {
-                validateNodeList(current.child, current);
+            if (currentSibling.child != null) {
+                // Validate children, passing current node as the expected parent
+                sizeCount += validateNodeAndChildren(currentSibling.child, currentSibling);
             }
 
-            current = current.next;
+            currentSibling = currentSibling.next;
             
-            safetyCounter++;
-            if (safetyCounter > 100000) throw new RuntimeException("INFINITE LOOP: Detected in sibling list containing " + startNode.key);
+            // Safety check for loops within sibling lists
+            if (sizeCount > this.HeapSize + 100) {
+                 throw new RuntimeException("INFINITE LOOP detected inside sibling list of [" + startSibling.item.key + "]");
+            }
 
-        } while (current != startNode);
+        } while (currentSibling != startSibling);
+
+        return sizeCount;
     }
+    
     
     /**
      * Class implementing a node in a ExtendedFibonacci Heap.
      *  
      */
     public static class HeapNode{
-        public int key;
-        public String info;
+    	public HeapItem item;
         public HeapNode child;
         public HeapNode next;
         public HeapNode prev;
@@ -643,18 +731,26 @@ public class Heap
         public boolean flag;
         
         public HeapNode(int key, String info) {
-        	this.key=key;
-        	this.info=info;
+        	this.item= new HeapItem(key,info);
+        	this.item.setNode(this);
     		this.next=this;
     		this.prev=this;
     		this.flag=false;
 
         }
         
+        @Override
+        public String toString() {
+            return this.item.toString(); 
+        }
+        
         public HeapNode link(HeapNode other) {
         	// function linking between this and other HeapNodes as of Heap Linking Algorithm
         	// time complexity O(1), only pointers adjusments
-        	if(this.key<other.key) {
+
+
+        	
+        	if(this.item.key<other.item.key) {
         		other.parent=this;
         		
         		other.prev.next=other.next;  /// taking other out of the 
@@ -700,17 +796,38 @@ public class Heap
 
 
 
-		@Override
-		public String toString() {
-			return "[" + key +","+ info + "]";
-		}
 
+    }
+    
+    public static class HeapItem{
+    	public HeapNode node;
+    	public int key;
+    	public String info;
+    	
+    	public HeapItem(int key, String info) {
+    		this.key = key;
+    		this.info = info;
+    	}
+
+		/**
+		 * @param node the node to set
+		 */
+		public void setNode(HeapNode node) {
+			this.node = node;
+		}
+		
 		/**
 		 * @param key the key to set
 		 */
 		public void setKey(int key) {
 			this.key = key;
 		}
+
+		@Override
+		public String toString() {
+			return "[" +key + "," + info + "]";
+		}
+    	
     }
 
     
